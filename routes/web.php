@@ -41,6 +41,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/notes/{note}/force', [NotesController::class, 'forceDelete'])->name('notes.force-delete');
     Route::get('/archive', [NotesController::class, 'archiveList'])->name('notes.archive-list');
     Route::get('/trash', [NotesController::class, 'trashList'])->name('notes.trash-list');
+    // Archive PIN
+    Route::post('/notes/{note}/archive-pin', [NotesController::class, 'setArchivePin'])->name('notes.archive-pin.set');
+    Route::post('/notes/{note}/archive-pin/verify', [NotesController::class, 'verifyArchivePin'])->name('notes.archive-pin.verify');
+    Route::delete('/notes/{note}/archive-pin', [NotesController::class, 'removeArchivePin'])->name('notes.archive-pin.remove');
 
     // Notes CRUD
     Route::resource('notes', NotesController::class);
@@ -59,14 +63,23 @@ Route::middleware('auth')->group(function () {
         Route::post('/ai/title', [AiController::class, 'title'])->name('ai.title');
         Route::post('/ai/explain', [AiController::class, 'explain'])->name('ai.explain');
         Route::post('/ai/translate', [AiController::class, 'translate'])->name('ai.translate');
+        Route::post('/ai/chat', [AiController::class, 'chat'])->name('ai.chat');
     });
+
+    // Notes Export
+    Route::get('/notes/{note}/export/{format}', [NotesController::class, 'export'])->name('notes.export');
 
     // Logout
     Route::post('/logout', [GoogleController::class, 'logout'])->name('logout');
 });
 
-// Google OAuth Routes
+// Google OAuth & OTP Verification Routes
 Route::middleware('guest')->group(function () {
     Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('google.redirect');
     Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
+
+    // OTP 2FA Verification Routes
+    Route::get('/auth/otp', [GoogleController::class, 'showOtpForm'])->name('auth.otp.show');
+    Route::post('/auth/otp', [GoogleController::class, 'verifyOtp'])->name('auth.otp.verify');
+    Route::post('/auth/otp/resend', [GoogleController::class, 'resendOtp'])->name('auth.otp.resend');
 });

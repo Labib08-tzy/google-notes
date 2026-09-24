@@ -27,7 +27,7 @@ class AiController extends Controller
         $validated = $request->validate([
             'content' => 'required|string|max:10000',
             'note_id' => 'nullable|integer|exists:notes,id',
-            'target_language' => 'nullable|string|in:id,en',
+            'target_language' => 'nullable|string|in:id,en,es,fr,de,ja,ko,zh,ar,pt,ru,hi,it,nl,tr,pl,sv,da,no,fi,th,vi',
         ]);
 
         if (!empty($validated['note_id'])) {
@@ -115,6 +115,28 @@ class AiController extends Controller
             return response()->json(['result' => $result]);
         } catch (Exception $e) {
             Log::error("AI translate failure for user " . Auth::id() . ": " . $e->getMessage(), ['exception' => $e]);
+            return response()->json(['error' => 'Failed to generate AI response. Please try again.'], 500);
+        }
+    }
+
+    public function chat(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'message' => 'required|string|max:5000',
+            'history' => 'nullable|array',
+            'history.*.role' => 'required|string|in:user,model',
+            'history.*.text' => 'required|string|max:5000',
+        ]);
+
+        try {
+            $result = $this->geminiService->chat(
+                $validated['history'] ?? [],
+                $validated['message']
+            );
+            Log::info("AI chat success for user " . Auth::id());
+            return response()->json(['result' => $result]);
+        } catch (Exception $e) {
+            Log::error("AI chat failure for user " . Auth::id() . ": " . $e->getMessage(), ['exception' => $e]);
             return response()->json(['error' => 'Failed to generate AI response. Please try again.'], 500);
         }
     }

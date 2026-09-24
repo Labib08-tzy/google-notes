@@ -10,6 +10,7 @@
                 aiOutput: '',
                 aiError: '',
                 currentAction: '',
+                translateOpen: false,
                 autosaveStatus: '',
                 lastSavedContent: {
                     title: '{{ addslashes($note->title) }}',
@@ -259,20 +260,32 @@
                                 Explain
                             </button>
 
-                            <div class="relative" x-data="{ open: false }">
-                                <button type="button" @click="open = !open" :disabled="loading" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-[#34A853] hover:border-[#34A853]/30 hover:bg-[#34A853]/5 dark:hover:bg-[#34A853]/10 disabled:opacity-50 transition-all duration-200 flex items-center gap-1">
+                            <div class="relative">
+                                <button type="button" @click="translateOpen = !translateOpen" :disabled="loading" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-[#34A853] hover:border-[#34A853]/30 hover:bg-[#34A853]/5 dark:hover:bg-[#34A853]/10 disabled:opacity-50 transition-all duration-200 flex items-center gap-1">
                                     Translate
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                                     </svg>
                                 </button>
-                                <div x-show="open" @click.outside="open = false" class="absolute left-0 mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700 py-1 z-10" x-cloak>
-                                    <button type="button" @click="callAi('translate', { target_language: 'id' }); open = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">
-                                        Translate to Indonesian
-                                    </button>
-                                    <button type="button" @click="callAi('translate', { target_language: 'en' }); open = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">
-                                        Translate to English
-                                    </button>
+                                <div x-show="translateOpen" @click.outside="translateOpen = false" class="absolute left-0 mt-1 w-52 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700 py-1 z-10 max-h-64 overflow-y-auto" x-cloak>
+                                    <p class="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Select Language</p>
+                                    <button type="button" @click="callAi('translate', { target_language: 'id' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇮🇩 Indonesian</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'en' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇺🇸 English</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'es' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇪🇸 Spanish</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'fr' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇫🇷 French</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'de' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇩🇪 German</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'ja' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇯🇵 Japanese</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'ko' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇰🇷 Korean</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'zh' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇨🇳 Chinese</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'ar' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇸🇦 Arabic</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'pt' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇧🇷 Portuguese</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'ru' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇷🇺 Russian</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'hi' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇮🇳 Hindi</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'it' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇮🇹 Italian</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'nl' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇳🇱 Dutch</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'tr' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇹🇷 Turkish</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'vi' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇻🇳 Vietnamese</button>
+                                    <button type="button" @click="callAi('translate', { target_language: 'th' }); translateOpen = false" class="w-full text-left px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-[#34A853] transition-colors">🇹🇭 Thai</button>
                                 </div>
                             </div>
                         </div>

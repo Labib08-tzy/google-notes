@@ -22,7 +22,7 @@
                     e.preventDefault();
                     document.getElementById('notes-search-input')?.focus();
                 }
-                if (e.key === 'Delete' && selectedNotes.length > 0) {
+                if (e.key === 'Delete' && $data.selectedNotes.length > 0) {
                     document.getElementById('bulk-action-input').value = 'delete';
                     document.getElementById('bulk-action-form').submit();
                 }

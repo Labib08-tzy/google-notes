@@ -107,7 +107,11 @@
                             <option value="professional" {{ $settings->ai_tone === 'professional' ? 'selected' : '' }}>Professional & Business</option>
                             <option value="casual" {{ $settings->ai_tone === 'casual' ? 'selected' : '' }}>Casual & Fun</option>
                             <option value="academic" {{ $settings->ai_tone === 'academic' ? 'selected' : '' }}>Academic & Technical</option>
+                            <option value="rudy" {{ $settings->ai_tone === 'rudy' ? 'selected' : '' }}>😈 Rudy Mode — Brutal & Sarcastic</option>
                         </select>
+                        @if($settings->ai_tone === 'rudy')
+                            <p class="mt-2 text-xs text-red-500 dark:text-red-400 font-medium">⚠️ Rudy Mode aktif. AI akan sangat blak-blakan, sarkastis, dan tidak sopan — seperti teman jujur yang nyebelin tapi selalu bener.</p>
+                        @endif
                         @error('ai_tone')
                             <p class="mt-2 text-xs text-[#EA4335]">{{ $message }}</p>
                         @enderror

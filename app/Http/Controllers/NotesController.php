@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -372,7 +373,7 @@ class NotesController extends Controller
         $validated = $request->validate([
             'note_ids' => 'required|array',
             'note_ids.*' => 'integer',
-            'action' => 'required|string|in:delete,archive,restore,favorite,unfavorite,pin,unpin,force_delete',
+            'action' => 'required|string|in:delete,archive,unarchive,restore,favorite,unfavorite,pin,unpin,force_delete',
         ]);
 
         $action = $validated['action'];
@@ -388,6 +389,9 @@ class NotesController extends Controller
                     break;
                 case 'archive':
                     $note->update(['is_archived' => true, 'archived_at' => now()]);
+                    break;
+                case 'unarchive':
+                    $note->update(['is_archived' => false, 'archived_at' => null]);
                     break;
                 case 'restore':
                     $note->restore();
@@ -418,10 +422,137 @@ class NotesController extends Controller
     }
 
     /**
+     * Set or update archive PIN for a note.
+     */
+    public function setArchivePin(Request $request, Note $note): RedirectResponse
+    {
+        if ($note->user_id !== Auth::id()) abort(403);
+
+        $validated = $request->validate([
+            'pin' => 'required|string|digits:4|confirmed',
+        ]);
+
+        $note->update(['archive_pin' => Hash::make($validated['pin'])]);
+
+        return back()->with('success', 'PIN set successfully. Your archived note is now protected.');
+    }
+
+    /**
+     * Verify archive PIN and store in session.
+     */
+    public function verifyArchivePin(Request $request, Note $note): RedirectResponse
+    {
+        if ($note->user_id !== Auth::id()) abort(403);
+
+        $validated = $request->validate([
+            'pin' => 'required|string|digits:4',
+        ]);
+
+        if (!Hash::check($validated['pin'], $note->archive_pin)) {
+            return back()->withErrors(['pin' => 'Incorrect PIN. Please try again.']);
+        }
+
+        // Store verified PIN in session for this note
+        $request->session()->put('verified_pin_note_' . $note->id, true);
+
+        return back()->with('success', 'PIN verified. Note unlocked.');
+    }
+
+    /**
+     * Remove archive PIN from a note.
+     */
+    public function removeArchivePin(Request $request, Note $note): RedirectResponse
+    {
+        if ($note->user_id !== Auth::id()) abort(403);
+
+        $validated = $request->validate([
+            'pin' => 'required|string|digits:4',
+        ]);
+
+        if (!Hash::check($validated['pin'], $note->archive_pin)) {
+            return back()->withErrors(['pin_remove' => 'Incorrect PIN. Cannot remove protection.']);
+        }
+
+        $note->update(['archive_pin' => null]);
+        $request->session()->forget('verified_pin_note_' . $note->id);
+
+        return back()->with('success', 'PIN removed. Note is no longer protected.');
+    }
+
+    /**
      * Helper to invalidate user statistics cache.
      */
     protected function invalidateStatsCache(): void
     {
         Cache::forget("user_" . Auth::id() . "_stats");
+    }
+
+    /**
+     * Export note to a specific format.
+     */
+    public function export(Note $note, string $format): \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+    {
+        if ($note->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $allowedFormats = ['txt', 'md', 'html', 'json'];
+        if (!in_array($format, $allowedFormats)) {
+            return back()->with('error', 'Invalid export format.');
+        }
+
+        $safeTitle = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $note->title);
+        $filename = $safeTitle . '_' . $note->id . '.' . $format;
+
+        switch ($format) {
+            case 'txt':
+                $content = $note->title . "\n" . str_repeat('=', strlen($note->title)) . "\n\n" . $note->content;
+                $mime = 'text/plain';
+                break;
+
+            case 'md':
+                $content = "# " . $note->title . "\n\n" . $note->content;
+                if ($note->tags->count() > 0) {
+                    $tags = $note->tags->pluck('name')->implode(', ');
+                    $content .= "\n\n---\n**Tags:** " . $tags;
+                }
+                $content .= "\n\n*Created: " . $note->created_at->format('Y-m-d H:i') . "*";
+                $mime = 'text/markdown';
+                break;
+
+            case 'html':
+                $escapedTitle = htmlspecialchars($note->title, ENT_QUOTES, 'UTF-8');
+                $escapedContent = nl2br(htmlspecialchars($note->content, ENT_QUOTES, 'UTF-8'));
+                $tagsHtml = '';
+                if ($note->tags->count() > 0) {
+                    $tags = $note->tags->pluck('name')->map(fn($t) => '<span class="tag">' . htmlspecialchars($t) . '</span>')->implode(' ');
+                    $tagsHtml = "<div class='tags'><strong>Tags:</strong> {$tags}</div>";
+                }
+                $content = "<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>{$escapedTitle}</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:0 20px;color:#333;line-height:1.7}h1{color:#202124;border-bottom:2px solid #f59e0b;padding-bottom:10px}.meta{color:#888;font-size:0.9em;margin-top:20px}.tag{background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:0.85em;margin-right:4px}</style></head><body><h1>{$escapedTitle}</h1><div class='content'>{$escapedContent}</div>{$tagsHtml}<div class='meta'>Created: {$note->created_at->format('Y-m-d H:i')}</div></body></html>";
+                $mime = 'text/html';
+                break;
+
+            case 'json':
+                $data = [
+                    'id' => $note->id,
+                    'title' => $note->title,
+                    'content' => $note->content,
+                    'tags' => $note->tags->pluck('name'),
+                    'is_pinned' => $note->is_pinned,
+                    'is_favorite' => $note->is_favorite,
+                    'created_at' => $note->created_at->toIso8601String(),
+                    'updated_at' => $note->updated_at->toIso8601String(),
+                ];
+                $content = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+                $mime = 'application/json';
+                break;
+        }
+
+        Log::info("Note {$note->id} exported as {$format} by user " . Auth::id());
+
+        return response($content, 200, [
+            'Content-Type' => $mime . '; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 }

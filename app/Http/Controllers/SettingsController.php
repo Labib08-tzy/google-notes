@@ -31,7 +31,7 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'theme' => 'required|string|in:light,dark,system',
             'ai_language' => 'required|string|in:auto,id,en',
-            'ai_tone' => 'required|string|in:professional,friendly,casual,academic',
+            'ai_tone' => 'required|string|in:professional,friendly,casual,academic,rudy',
             'ai_response_length' => 'required|string|in:short,medium,long',
             'dashboard_layout' => 'required|string|in:grid,list',
             'notes_per_page' => 'required|integer|min:1|max:100',

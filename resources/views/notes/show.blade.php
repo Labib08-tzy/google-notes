@@ -31,7 +31,34 @@
                     </div>
 
                     <!-- Detail Actions -->
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2" x-data="{ exportOpen: false }">
+                        <!-- Export Dropdown -->
+                        <div class="relative">
+                            <button @click="exportOpen = !exportOpen" class="p-2 text-gray-400 dark:text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all" title="Export Note">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                            </button>
+                            <div x-show="exportOpen" @click.outside="exportOpen = false" x-cloak
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
+                                 class="absolute right-0 mt-1 w-44 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-1 z-20">
+                                <p class="px-3 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Export as</p>
+                                <a href="{{ route('notes.export', [$note, 'txt']) }}" class="flex items-center gap-2 px-3 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 transition-colors">
+                                    <span class="w-6 h-6 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center text-xs font-bold">.txt</span> Plain Text
+                                </a>
+                                <a href="{{ route('notes.export', [$note, 'md']) }}" class="flex items-center gap-2 px-3 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 transition-colors">
+                                    <span class="w-6 h-6 bg-purple-100 dark:bg-purple-900/30 rounded flex items-center justify-center text-xs font-bold text-purple-600">.md</span> Markdown
+                                </a>
+                                <a href="{{ route('notes.export', [$note, 'html']) }}" class="flex items-center gap-2 px-3 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 transition-colors">
+                                    <span class="w-6 h-6 bg-orange-100 dark:bg-orange-900/30 rounded flex items-center justify-center text-xs font-bold text-orange-600">.html</span> HTML
+                                </a>
+                                <a href="{{ route('notes.export', [$note, 'json']) }}" class="flex items-center gap-2 px-3 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-700 transition-colors">
+                                    <span class="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded flex items-center justify-center text-xs font-bold text-blue-600">.json</span> JSON
+                                </a>
+                            </div>
+                        </div>
                         <a href="{{ route('notes.edit', $note) }}" class="p-2 text-gray-400 dark:text-gray-500 hover:text-[#FBBC05] hover:bg-[#FBBC05]/5 rounded-lg transition-all" title="Edit Note">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />

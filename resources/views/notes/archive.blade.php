@@ -77,7 +77,7 @@
                 </template>
                 <input type="hidden" name="action" id="bulk-action-input">
 
-                <button type="button" @click="document.getElementById('bulk-action-input').value = 'restore'; $el.form.submit()" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <button type="button" @click="document.getElementById('bulk-action-input').value = 'unarchive'; $el.form.submit()" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                     Unarchive / Restore
                 </button>
                 <button type="button" @click="document.getElementById('bulk-action-input').value = 'delete'; $el.form.submit()" class="px-3 py-1.5 bg-[#EA4335]/10 text-[#EA4335] rounded-lg text-xs font-semibold hover:bg-[#EA4335] hover:text-white">
@@ -90,33 +90,72 @@
         @if ($notes->count() > 0)
             <div class="{{ $settings->dashboard_layout === 'list' ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' }}">
                 @foreach ($notes as $note)
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-300 flex {{ $settings->dashboard_layout === 'list' ? 'flex-col sm:flex-row sm:items-center sm:justify-between gap-6 h-auto py-4' : 'flex-col justify-between h-72' }} group relative">
+                    @php
+                        $isPinProtected = !empty($note->archive_pin);
+                        $isVerified = session('verified_pin_note_' . $note->id, false);
+                        $isLocked = $isPinProtected && !$isVerified;
+                    @endphp
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border {{ $isPinProtected ? 'border-amber-200 dark:border-amber-700/50' : 'border-gray-100 dark:border-gray-700' }} shadow-sm p-6 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-600/50 transition-all duration-300 flex {{ $settings->dashboard_layout === 'list' ? 'flex-col sm:flex-row sm:items-center sm:justify-between gap-6 h-auto py-4' : 'flex-col justify-between h-72' }} group relative"
+                         x-data="{
+                            pinModalOpen: false,
+                            pinManageOpen: false,
+                            pinValue: '',
+                            pinConfirm: '',
+                            pinRemove: '',
+                            pinError: '',
+                            pinMode: 'verify'
+                         }">
                         
-                        <div class="flex items-start gap-3 flex-1 min-w-0">
-                            <!-- Checkbox for Bulk Actions -->
-                            <input type="checkbox" :value="{{ $note->id }}" x-model="selectedNotes"
-                                   class="mt-1 rounded border-gray-300 dark:border-gray-600 text-[#4285F4] focus:ring-[#4285F4] cursor-pointer">
-                            
-                            <div class="flex-1 min-w-0">
-                                <h3 class="text-base font-semibold text-[#202124] dark:text-gray-100 mb-2 truncate group-hover:text-[#4285F4] transition-colors">
-                                    <a href="{{ route('notes.show', $note) }}">{{ $note->title }}</a>
-                                </h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2 leading-relaxed {{ $settings->dashboard_layout === 'list' ? 'line-clamp-1 sm:line-clamp-2' : 'line-clamp-3' }}">
-                                    {{ $note->content }}
-                                </p>
-
-                                <!-- Tags rendering -->
-                                @if($note->tags->count() > 0)
-                                    <div class="flex flex-wrap gap-1.5 mt-2">
-                                        @foreach($note->tags as $tag)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#4285F4]/10 text-[#4285F4]">
-                                                {{ $tag->name }}
-                                            </span>
-                                        @endforeach
-                                    </div>
-                                @endif
+                        @if($isPinProtected)
+                            <div class="absolute top-3 right-3 z-10">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold {{ $isLocked ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' }}">
+                                    @if($isLocked)
+                                        🔒 PIN Protected
+                                    @else
+                                        🔓 Unlocked
+                                    @endif
+                                </span>
                             </div>
-                        </div>
+                        @endif
+
+                        @if($isLocked)
+                            <!-- LOCKED STATE -->
+                            <div class="flex-1 flex flex-col items-center justify-center text-center py-4">
+                                <div class="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center mb-4 text-3xl">🔒</div>
+                                <h3 class="text-base font-semibold text-[#202124] dark:text-gray-100 mb-1">{{ $note->title }}</h3>
+                                <p class="text-xs text-amber-600 dark:text-amber-400 mb-4">This note is PIN-protected</p>
+                                <button type="button" @click="pinModalOpen = true; pinMode = 'verify'"
+                                        class="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors">
+                                    Enter PIN to View
+                                </button>
+                            </div>
+                        @else
+                            <div class="flex items-start gap-3 flex-1 min-w-0">
+                                <!-- Checkbox for Bulk Actions -->
+                                <input type="checkbox" :value="{{ $note->id }}" x-model="selectedNotes"
+                                       class="mt-1 rounded border-gray-300 dark:border-gray-600 text-[#4285F4] focus:ring-[#4285F4] cursor-pointer">
+                                
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-base font-semibold text-[#202124] dark:text-gray-100 mb-2 truncate group-hover:text-amber-600 transition-colors">
+                                        <a href="{{ route('notes.show', $note) }}">{{ $note->title }}</a>
+                                    </h3>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-2 leading-relaxed {{ $settings->dashboard_layout === 'list' ? 'line-clamp-1 sm:line-clamp-2' : 'line-clamp-3' }}">
+                                        {{ $note->content }}
+                                    </p>
+
+                                    <!-- Tags rendering -->
+                                    @if($note->tags->count() > 0)
+                                        <div class="flex flex-wrap gap-1.5 mt-2">
+                                            @foreach($note->tags as $tag)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                                                    {{ $tag->name }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
 
                         <div class="{{ $settings->dashboard_layout === 'list' ? 'flex items-center gap-6 shrink-0' : 'border-t border-gray-50 dark:border-gray-700 pt-4 flex items-center justify-between' }}">
                             <div class="text-xs text-gray-400 dark:text-gray-500 {{ $settings->dashboard_layout === 'list' ? 'text-left sm:text-right' : '' }}">
@@ -125,6 +164,15 @@
 
                             <!-- Card Action Buttons -->
                             <div class="flex items-center gap-1">
+                                <!-- PIN Manage Button -->
+                                <button type="button" @click="pinManageOpen = true" title="{{ $isPinProtected ? 'Manage PIN' : 'Set PIN' }}"
+                                        class="p-2 text-gray-400 dark:text-gray-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $isPinProtected ? 'M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z' : 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z' }}" />
+                                    </svg>
+                                </button>
+
+                                @if(!$isLocked)
                                 <!-- Unarchive Button -->
                                 <form action="{{ route('notes.archive', $note) }}" method="POST" class="inline">
                                     @csrf
@@ -147,6 +195,106 @@
                                         </svg>
                                     </button>
                                 </form>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- PIN Verify Modal -->
+                        <div x-show="pinModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" x-transition>
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-6 shadow-xl border border-amber-100 dark:border-amber-700/50" @click.outside="pinModalOpen = false; pinValue = ''; pinError = ''">
+                                <div class="flex items-center gap-3 mb-5">
+                                    <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl">🔒</div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-[#202124] dark:text-gray-100">Enter PIN</h3>
+                                        <p class="text-xs text-gray-400">4-digit PIN required</p>
+                                    </div>
+                                </div>
+                                <form action="{{ route('notes.archive-pin.verify', $note) }}" method="POST">
+                                    @csrf
+                                    <input type="password" name="pin" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                                           class="w-full px-4 py-3 text-center text-2xl tracking-[0.5em] bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-200 dark:border-amber-700 rounded-xl focus:outline-none focus:border-amber-500 transition-all mb-4 font-mono"
+                                           placeholder="••••" required autofocus>
+                                    @if($errors->has('pin'))
+                                        <p class="text-xs text-red-500 mb-3 text-center">{{ $errors->first('pin') }}</p>
+                                    @endif
+                                    <div class="flex gap-3">
+                                        <button type="button" @click="pinModalOpen = false; pinValue = ''" class="flex-1 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">Cancel</button>
+                                        <button type="submit" class="flex-1 px-4 py-2 text-sm font-medium text-white rounded-xl transition-all" style="background: linear-gradient(135deg, #f59e0b, #d97706);">Unlock</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- PIN Manage Modal (Set / Remove PIN) -->
+                        <div x-show="pinManageOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" x-transition>
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-6 shadow-xl border border-amber-100 dark:border-amber-700/50" @click.outside="pinManageOpen = false">
+                                <div class="flex items-center gap-3 mb-5">
+                                    <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl">🔐</div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-[#202124] dark:text-gray-100">{{ $isPinProtected ? 'Change or Remove PIN' : 'Set Archive PIN' }}</h3>
+                                        <p class="text-xs text-gray-400">Protect this note with a 4-digit PIN</p>
+                                    </div>
+                                </div>
+
+                                @if(!$isPinProtected)
+                                <form action="{{ route('notes.archive-pin.set', $note) }}" method="POST" class="space-y-3">
+                                    @csrf
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">New PIN (4 digits)</label>
+                                        <input type="password" name="pin" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                                               class="w-full px-4 py-2.5 text-center text-xl tracking-widest bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-200 dark:border-amber-700 rounded-xl focus:outline-none focus:border-amber-500 font-mono"
+                                               placeholder="••••" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Confirm PIN</label>
+                                        <input type="password" name="pin_confirmation" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                                               class="w-full px-4 py-2.5 text-center text-xl tracking-widest bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-200 dark:border-amber-700 rounded-xl focus:outline-none focus:border-amber-500 font-mono"
+                                               placeholder="••••" required>
+                                    </div>
+                                    @if($errors->has('pin'))
+                                        <p class="text-xs text-red-500">{{ $errors->first('pin') }}</p>
+                                    @endif
+                                    <div class="flex gap-3 pt-2">
+                                        <button type="button" @click="pinManageOpen = false" class="flex-1 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">Cancel</button>
+                                        <button type="submit" class="flex-1 px-4 py-2 text-sm font-medium text-white rounded-xl" style="background: linear-gradient(135deg, #f59e0b, #d97706);">Set PIN</button>
+                                    </div>
+                                </form>
+                                @else
+                                <div class="space-y-4">
+                                    <form action="{{ route('notes.archive-pin.set', $note) }}" method="POST" class="space-y-3">
+                                        @csrf
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">New PIN</label>
+                                            <input type="password" name="pin" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                                                   class="w-full px-4 py-2.5 text-center text-xl tracking-widest bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-200 dark:border-amber-700 rounded-xl focus:outline-none focus:border-amber-500 font-mono"
+                                                   placeholder="••••" required>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Confirm New PIN</label>
+                                            <input type="password" name="pin_confirmation" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                                                   class="w-full px-4 py-2.5 text-center text-xl tracking-widest bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-200 dark:border-amber-700 rounded-xl focus:outline-none focus:border-amber-500 font-mono"
+                                                   placeholder="••••" required>
+                                        </div>
+                                        <button type="submit" class="w-full px-4 py-2 text-sm font-medium text-white rounded-xl" style="background: linear-gradient(135deg, #f59e0b, #d97706);">Change PIN</button>
+                                    </form>
+                                    <hr class="border-gray-100 dark:border-gray-700">
+                                    <form action="{{ route('notes.archive-pin.remove', $note) }}" method="POST" class="space-y-3">
+                                        @csrf
+                                        @method('DELETE')
+                                        <div>
+                                            <label class="block text-xs font-medium text-red-500 mb-1">Enter current PIN to remove protection</label>
+                                            <input type="password" name="pin" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                                                   class="w-full px-4 py-2.5 text-center text-xl tracking-widest bg-red-50 dark:bg-red-900/10 border-2 border-red-200 dark:border-red-700 rounded-xl focus:outline-none focus:border-red-400 font-mono"
+                                                   placeholder="••••" required>
+                                        </div>
+                                        @if($errors->has('pin_remove'))
+                                            <p class="text-xs text-red-500">{{ $errors->first('pin_remove') }}</p>
+                                        @endif
+                                        <button type="submit" class="w-full px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all">Remove PIN</button>
+                                    </form>
+                                    <button type="button" @click="pinManageOpen = false" class="w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors py-1">Cancel</button>
+                                </div>
+                                @endif
                             </div>
                         </div>
                     </div>
